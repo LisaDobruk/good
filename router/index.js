@@ -1,101 +1,56 @@
-class Router {
-    routes = [];
+window.onload = function() {
+    let path = pathRender(window.location.pathname);
+    getComponent(path);
+  };
   
-    mode = null;
+  //links da aplicação SPA
+  const links = document.querySelectorAll(".link");
   
-    root = '/';
+  function render(event) {
+    event.preventDefault();
+    const pathName = pathRender(event.target.pathname);
   
-    constructor(options) {
-      this.mode = window.history.pushState ? 'history' : 'hash';
-      if (options.mode) this.mode = options.mode;
-      if (options.root) this.root = options.root;
-      this.listen();
-    }
+    getComponent(pathName);
   
-    add = (path, cb) => {
-      this.routes.push({ path, cb });
-      return this;
-    };
-  
-    remove = path => {
-      for (let i = 0; i < this.routes.length; i += 1) {
-        if (this.routes[i].path === path) {
-          this.routes.slice(i, 1);
-          return this;
-        }
-      }
-      return this;
-    };
-  
-    flush = () => {
-      this.routes = [];
-      return this;
-    };
-  
-    clearSlashes = path =>
-      path
-        .toString()
-        .replace(/\/$/, '')
-        .replace(/^\//, '');
-  
-    getFragment = () => {
-      let fragment = '';
-      if (this.mode === 'history') {
-        fragment = this.clearSlashes(decodeURI(window.location.pathname + window.location.search));
-        fragment = fragment.replace(/\?(.*)$/, '');
-        fragment = this.root !== '/' ? fragment.replace(this.root, '') : fragment;
-      } else {
-        const match = window.location.href.match(/#(.*)$/);
-        fragment = match ? match[1] : '';
-      }
-      return this.clearSlashes(fragment);
-    };
-  
-    navigate = (path = '') => {
-      if (this.mode === 'history') {
-        window.history.pushState(null, null, this.root + this.clearSlashes(path));
-      } else {
-        window.location.href = `${window.location.href.replace(/#(.*)$/, '')}#${path}`;
-      }
-      return this;
-    };
-  
-    listen = () => {
-      clearInterval(this.interval);
-      this.interval = setInterval(this.interval, 50);
-    };
-  
-    interval = () => {
-      if (this.current === this.getFragment()) return;
-      this.current = this.getFragment();
-  
-      this.routes.some(route => {
-        const match = this.current.match(route.path);
-        if (match) {
-          match.shift();
-          route.cb.apply({}, match);
-          return match;
-        }
-        return false;
-      });
-    };
+    window.history.pushState(null, null, pathName[0].name);
   }
   
-  export default Router;
+  //pegar o nome da rota e o path para renderizar no getComponent
+  function pathRender(pathName) {
+    const path = routes.filter(item => {
+      return item.name == pathName;
+    });
   
-  const router = new Router({
-    mode: 'hash',
-    root: '/'
+    if (!path.length) {
+      console.log("Rota não registrada no sistema");
+    } else {
+      return path;
+    }
+  }
+  
+  // Pega o componente para ser renderizado
+  async function getComponent(pathName) {
+    const dirDefault = "components/";
+    const pathComponent = dirDefault + pathName[0].path;
+  
+    const getHtml = await fetch(pathComponent);
+    const textHtml = await getHtml.text();
+  
+    const createHtml = document.createElement("div");
+  
+    createHtml.innerHTML = textHtml;
+  
+    const app = document.querySelector("#app");
+  
+    app.innerHTML = createHtml.innerHTML;
+  }
+  //
+  links.forEach(link => {
+    link.addEventListener("click", render);
   });
   
-  router
-    .add(/about/, () => {
-      alert('welcome in about page');
-    })
-    .add(/products\/(.*)\/specification\/(.*)/, (id, specification) => {
-      alert(`products: ${id} specification: ${specification}`);
-    })
-    .add('', () => {
-      // general controller
-      console.log('welcome in catch all controller');
-    });
+  //Carrega o componente caso o usuário use a navegação de historico do navegador
+  window.addEventListener("popstate", () => {
+    let path = pathRender(window.location.pathname);
+    getComponent(path);
+  });
